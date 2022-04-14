@@ -219,5 +219,5 @@ instance (NFData a, NFData b)=> NFData (Pair a b) where
 {- Note: INLINE and NOTINLINE
 'Read' and 'Show' methods are marked 'NOTINLINE'. Any performance gained by inlining is likely to be marginal compared to the increase in code size in modules that use those methods.
 
-Other methods that have extra constraints (of 'Eq', 'Eq1', 'Ord', 'Ord1', 'Applicative', 'Monad', 'Traversable', 'bitraversable', 'NFData1', 'NFData') are marked 'INLINE' in the hope that they will specialize to their constraints.
+Other methods that have extra constraints are marked 'INLINE' in the hope that they will specialize to their constraints.
 -}
