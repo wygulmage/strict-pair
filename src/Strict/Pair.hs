@@ -69,12 +69,12 @@ swap' (x :!: y) = y :!: x
 -- lazy = uncurry' (,)
 
 -- toPair :: (c -> a) -> (c -> b) -> c -> Pair a b
--- toPair f g x = f x :!: g x
+-- toPair = liftA2 (:!:)
 -- {-# INLINE toPair #-}
 
 fromPair :: (c -> d -> e) -> (a -> c) -> (b -> d) -> Pair a b -> e
-{-^ Consume both elements of one 'Pair'. -}
-fromPair f g h (x :!: y) = f (g x) (h y)
+{-^ Consume both elements of one 'Pair'. '2' is analogous to that of 'liftA2', not 'liftEq2'. @from2Pair@ has unfortunate homophone implications. -}
+fromPair f g h (x :!: y) = g x `f` h y
 
 fromPair2 ::
    (a3 -> b3 -> c) -> (a1 -> a2 -> a3) -> (b1 -> b2 -> b3) ->
@@ -83,10 +83,12 @@ fromPair2 ::
 fromPair2 f g h (u :!: x) (v :!: y) = g u v `f` h x y
 
 liftPair2 ::
-   (a1 -> a2 -> a3) -> (b1 -> b2 -> b3) ->
-   Pair a1 b1 -> Pair a2 b2 -> Pair a3 b3
-{-^ @biliftA2@ for 'Pair'  -}
-liftPair2 = fromPair2 (:!:)
+   (Semigroup c)=>
+   (a -> b -> d) ->
+   Pair c a -> Pair c b -> Pair c d
+{-^ @Data.Functor.Apply.liftF2@ for 'Pair'. Remove and replace with 'liftF2' once Data.Functor.Apply is in base. -}
+liftPair2 = fromPair2 (:!:) (<>)
+{-# INLINE liftPair2 #-}
 
 
 instance Eq2 Pair where
@@ -130,7 +132,7 @@ instance Traversable (Pair c) where
 instance (Monoid c)=> Applicative (Pair c) where
    pure = (mempty :!:)
    {-# INLINE pure #-}
-   liftA2 = liftPair2 (<>)
+   liftA2 = liftPair2
    {-# INLINE liftA2 #-}
 
 instance (Monoid c)=> Monad (Pair c) where
@@ -140,7 +142,7 @@ instance (Monoid c)=> Monad (Pair c) where
 
 
 instance (Semigroup a, Semigroup b)=> Semigroup (Pair a b) where
-   (<>) = liftPair2 (<>) (<>)
+   (<>) = liftPair2 (<>)
    {-# INLINE (<>) #-}
    stimes n = bimap (stimes n) (stimes n)
    {-# INLINE stimes #-}
@@ -156,7 +158,8 @@ instance NFData2 Pair where
 --- Extremely Boring Instances ---
 
 instance Bifunctor Pair where
-   bimap = bimapDefault
+   -- bimap = bimapDefault
+   bimap = fromPair (:!:)
    second = fmap
 
 instance Functor (Pair c) where
@@ -219,5 +222,5 @@ instance (NFData a, NFData b)=> NFData (Pair a b) where
 {- Note: INLINE and NOTINLINE
 'Read' and 'Show' methods are marked 'NOTINLINE'. Any performance gained by inlining is likely to be marginal compared to the increase in code size in modules that use those methods.
 
-Other methods that have extra constraints are marked 'INLINE' in the hope that they will specialize to their constraints.
+Other functions that have extra constraints are marked 'INLINE' in the hope that they will specialize to their constraints.
 -}
