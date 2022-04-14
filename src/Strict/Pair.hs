@@ -28,7 +28,8 @@ import Data.Bitraversable
 import Data.Traversable
 import Data.Functor.Classes
 import Data.Semigroup
-import Data.Data
+import Data.Ix
+import Data.Data (Data)
 -- import Foreign.Storable -- Add a Storable instance once the offset management is airtight.
 import Text.Read
 import GHC.Read (expectP, paren)
@@ -98,7 +99,7 @@ instance Ord2 Pair where
    liftCompare2 !p !q = fromPair2 (<>) p q
 
 instance Read2 Pair where
-   liftReadPrec2 rp1 _ rp2 _ = parens $ readInfix <|> readPrefix
+   liftReadPrec2 !rp1 _ !rp2 _ = parens $ readInfix <|> readPrefix
       where
          constructor = expectP (Symbol ":!:")
          get1 = step rp1
@@ -113,7 +114,7 @@ instance Read2 Pair where
    {-# NOTINLINE liftReadListPrec2 #-}
 
 instance Show2 Pair where
-   liftShowsPrec2 sp1 _ sp2 _ d (x :!: y) = showParen (d > pairPrec) $
+   liftShowsPrec2 !sp1 _ !sp2 _ d (x :!: y) = showParen (d > pairPrec) $
       sp1 (pairPrec + 1) x . showString " :!: " . sp2 (pairPrec + 1) y
       where pairPrec = 1
    {-^ @liftShowsPrec2@ always uses infix form @str1 :!: str2@. -}
@@ -148,11 +149,25 @@ instance (Semigroup a, Semigroup b)=> Semigroup (Pair a b) where
    {-# INLINE stimes #-}
 
 instance (Monoid a, Monoid b)=> Monoid (Pair a b) where
-   mempty = mempty :!: mempty
+   mempty = pure mempty
    {-# INLINABLE mempty #-}
 
 instance NFData2 Pair where
    liftRnf2 = fromPair seq
+
+
+instance (Ix a, Ix b)=> Ix (Pair a b) where
+   range (l1 :!: l2, h1 :!: h2) =
+      liftA2 (:!:) (range (l1, h1)) (range (l2, h2))
+   {-# INLINABLE range #-}
+
+   index (l1 :!: l2, h1 :!: h2) (i1 :!: i2) =
+      index (l1 , h1) i1 * rangeSize (l2 , h2) + index (l2 , h2) i2
+   {-# INLINABLE index #-}
+
+   inRange (l1 :!: l2, h1 :!: h2) (i1 :!: i2) =
+      inRange (l1, h1) i1 && inRange (l2, h2) i2
+   {-# INLINABLE inRange #-}
 
 
 --- Extremely Boring Instances ---
